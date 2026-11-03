@@ -1,0 +1,135 @@
+---
+title: "London Business Dashboard"
+author: "111301067"
+format: 
+  dashboard:
+    theme: flatly
+    orientation: rows
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+#| label: setup
+library(tidyverse)
+library(plotly)
+library(DT)
+library(janitor)
+```
+
+
+```{r}
+#| title: "Why London? (UK Regions Overview 2023)"
+uk_data <- read_csv("business_survival.csv") %>%
+  clean_names() %>%
+  drop_na(area) %>%
+  filter(str_detect(code, "^E12")) %>%
+  pivot_longer(
+    cols = starts_with("x"), 
+    names_to = "year", 
+    values_to = "business_count"
+  ) %>%
+  mutate(year = as.numeric(str_replace(year, "x", "")))
+
+p_uk <- uk_data %>%
+  filter(year == 2023) %>%
+  arrange(desc(business_count)) %>%
+  ggplot(aes(x = reorder(area, business_count), y = business_count, fill = area)) +
+  geom_col() +
+  coord_flip() +
+  labs(x = "Region", 
+       y = "Total Businesses") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+ggplotly(p_uk)
+```
+
+```{r}
+# 1. Read data and clean names
+raw_data <- read_csv("business_survival.csv") %>%
+  clean_names() %>%
+  drop_na(area) %>%
+  filter(str_detect(code, "^E09"))
+```
+
+```{r}
+# 2. Reshape from wide to long format
+long_data <- raw_data %>%
+  pivot_longer(
+    cols = starts_with("x"), 
+    names_to = "year", 
+    values_to = "business_count"
+  ) %>%
+  mutate(year = as.numeric(str_replace(year, "x", "")))
+```
+
+
+## Row {height=25%}
+```{r}
+#| content: valuebox
+#| title: "Total Areas Tracked"
+#| icon: map
+#| color: primary
+list(value = length(unique(long_data$area)))
+```
+
+```{r}
+#| content: valuebox
+#| title: "Years Covered"
+#| icon: calendar3
+#| color: success
+list(value = paste0(min(long_data$year), " - ", max(long_data$year)))
+```
+
+```{r}
+#| content: valuebox
+#| title: "Max Businesses in a Region (2023)"
+#| icon: building
+#| color: warning
+max_biz_2023 <- long_data %>% filter(year == 2023) %>% summarize(max(business_count)) %>% pull()
+list(value = max_biz_2023)
+```
+
+
+## Row {height=75%}
+```{r}
+#| title: "Business Trend over 20 Years (Top 5 Areas)"
+# Get top 5 areas in 2023
+top_5_areas <- long_data %>%
+  filter(year == 2023) %>%
+  arrange(desc(business_count)) %>%
+  slice(1:5) %>%
+  pull(area)
+
+p1 <- long_data %>%
+  filter(area %in% top_5_areas) %>%
+  ggplot(aes(x = year, y = business_count, color = area)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  labs(x = "Year", 
+       y = "Number of Businesses",
+       color = "Area") +
+  theme_minimal()
+
+ggplotly(p1)
+```
+
+```{r}
+#| title: "Top 10 Areas by Business Count in 2023"
+p2 <- long_data %>%
+  filter(year == 2023) %>%
+  arrange(desc(business_count)) %>%
+  slice(1:10) %>%
+  ggplot(aes(x = reorder(area, business_count), y = business_count, fill = area)) +
+  geom_col() +
+  coord_flip() +
+  labs(x = "Area", 
+       y = "Total Businesses") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+ggplotly(p2)
+```
